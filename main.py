@@ -81,8 +81,21 @@ def draw_dumbbell(draw, cx, cy, s):
                            radius=5, fill=(75, 85, 99))
 
 
-def make_stamp(text, color, size, pad_x=26, pad_y=14):
-    """A rubber-stamp label: coloured outline + text on transparency."""
+def _icon_ring(d, cx, cy):
+    draw_ring(d, cx, cy, 26)
+
+
+def _icon_dumbbell(d, cx, cy):
+    draw_dumbbell(d, cx, cy, 16)
+
+
+# Verdict-card icons, keyed by name so call sites pass a plain string.
+ICONS = {"ring": _icon_ring, "dumbbell": _icon_dumbbell}
+
+
+def make_stamp(text, color, size, pad_x=26, pad_y=14, angle=0):
+    """A rubber-stamp label: coloured outline + text on transparency,
+    tilted by `angle` degrees (BICUBIC, expanded canvas)."""
     f = BOLD(size)
     tmp = ImageDraw.Draw(Image.new("RGBA", (10, 10)))
     tw = text_w(tmp, text, f)
@@ -91,6 +104,8 @@ def make_stamp(text, color, size, pad_x=26, pad_y=14):
     sd = ImageDraw.Draw(stamp)
     sd.rounded_rectangle([3, 3, w - 4, h - 4], radius=12, outline=color, width=5)
     sd.text((w // 2, h // 2), text, font=f, fill=color, anchor="mm")
+    if angle:
+        stamp = stamp.rotate(angle, expand=True, resample=Image.BICUBIC)
     return stamp
 
 
@@ -118,29 +133,27 @@ def draw_bubble(d, M, R, y1, y2, text):
         ly += 46
 
 
-def draw_verdict_card(d, M, R, y1, y2, accent, label, icon, main_text,
+def draw_verdict_card(d, M, R, y1, y2, accent, label, icon_name, main_text,
                       detail_text, stamp_text, stamp_color, stamp_angle,
                       img, *, label_dy=26, icon_y=148, main_x=122,
                       main_size=60, main_dy=108, detail_dy=196, stamp_dy=168,
                       strike=False):
     """One verdict card: white rounded rect, coloured left bar, gray label,
     icon, bold main line (+ red strikethrough when cancelled), detail line,
-    tilted rubber stamp. `icon` is a callable (d, cx, cy); `img` is the
+    tilted rubber stamp. `icon_name` is a key of ICONS; `img` is the
     canvas the stamp is pasted onto. The keyword offsets encode each card's
     own layout (the wedding card and the gym card differ slightly)."""
     d.rounded_rectangle([M, y1, R, y2], radius=28, fill=CARD)
     d.rounded_rectangle([M, y1, M + 16, y2], radius=8, fill=accent)
     d.text((M + 44, y1 + label_dy), label, font=BOLD(30), fill=MUTED)
-    icon(d, M + 78, y1 + icon_y)
+    ICONS[icon_name](d, M + 78, y1 + icon_y)
     mx, my = M + main_x, y1 + main_dy
     d.text((mx, my), main_text, font=BOLD(main_size), fill=INK)
     if strike:
         mw = text_w(d, main_text, BOLD(main_size))
         d.line([mx, my + 34, mx + mw, my + 34], fill=RED, width=8)
     d.text((M + main_x, y1 + detail_dy), detail_text, font=REG(28), fill=MUTED)
-    stamp = make_stamp(stamp_text, stamp_color, 40).rotate(stamp_angle,
-                                                            expand=True,
-                                                            resample=Image.BICUBIC)
+    stamp = make_stamp(stamp_text, stamp_color, 40, angle=stamp_angle)
     img.paste(stamp, (R - 40 - stamp.width, y1 + stamp_dy), stamp)
 
 
@@ -167,13 +180,13 @@ def main():
 
     # ---- card 1: the wedding, cancelled ----
     draw_verdict_card(d, M, R, 252, 544, RED, "SATURDAY  •  2:00 PM",
-                      lambda d, cx, cy: draw_ring(d, cx, cy, 26),
+                      "ring",
                       "YOUR WEDDING", "✓ 142 guests notified",
                       "CANCELLED", RED, -8, img, strike=True)
 
     # ---- card 2: the gym streak, protected ----
     draw_verdict_card(d, M, R, 564, 824, GREEN, "EVERY DAY  •  7:00 AM",
-                      lambda d, cx, cy: draw_dumbbell(d, cx, cy, 16),
+                      "dumbbell",
                       "GYM STREAK — DAY 47", "✓ Day 48 already secured",
                       "PROTECTED ✓", GREEN, 6, img,
                       label_dy=24, icon_y=118, main_x=140, main_size=52,
