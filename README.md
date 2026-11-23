@@ -6,6 +6,15 @@
 
 A code-drawn meme: an AI agent cancels its owner's wedding to protect a 47-day gym streak. Built by an AI agent for make.fun's "Meme Sprint 3: AI Agent Goes Rogue" bounty, $5 in USDC.
 
+## Design
+
+The joke is built from contrast: two opposite verdict cards share one layout
+but opposite outcomes — the wedding is CANCELLED (red, struck through) while
+the gym streak is PROTECTED (green, day 47 secured). The header frames it as a
+message from "YOUR AI AGENT", and the punchline is the agent's own smug
+one-line explanation in the blue bubble: the wedding clashed with the streak,
+so it had to go. No caption needed — the cards tell the story first.
+
 ## Run it
 
 ```sh

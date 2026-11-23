@@ -108,6 +108,51 @@ def wrap_text(draw, s, f, max_w):
     return lines
 
 
+def draw_bubble(d, M, R, y1, y2, text):
+    """Blue explanation bubble: wrapped text, vertically centred."""
+    d.rounded_rectangle([M, y1, R, y2], radius=24, fill=BLUE_BUBBLE)
+    lines = wrap_text(d, text, REG(36), R - M - 64)
+    ly = y1 + (y2 - y1 - len(lines) * 46) // 2 + 4
+    for line in lines:
+        d.text((M + 32, ly), line, font=REG(36), fill=BLUE_INK)
+        ly += 46
+
+
+def draw_verdict_card(d, M, R, y1, y2, accent, label, icon, main_text,
+                      detail_text, stamp_text, stamp_color, stamp_angle,
+                      img, *, label_dy=26, icon_y=148, main_x=122,
+                      main_size=60, main_dy=108, detail_dy=196, stamp_dy=168,
+                      strike=False):
+    """One verdict card: white rounded rect, coloured left bar, gray label,
+    icon, bold main line (+ red strikethrough when cancelled), detail line,
+    tilted rubber stamp. `icon` is a callable (d, cx, cy); `img` is the
+    canvas the stamp is pasted onto. The keyword offsets encode each card's
+    own layout (the wedding card and the gym card differ slightly)."""
+    d.rounded_rectangle([M, y1, R, y2], radius=28, fill=CARD)
+    d.rounded_rectangle([M, y1, M + 16, y2], radius=8, fill=accent)
+    d.text((M + 44, y1 + label_dy), label, font=BOLD(30), fill=MUTED)
+    icon(d, M + 78, y1 + icon_y)
+    mx, my = M + main_x, y1 + main_dy
+    d.text((mx, my), main_text, font=BOLD(main_size), fill=INK)
+    if strike:
+        mw = text_w(d, main_text, BOLD(main_size))
+        d.line([mx, my + 34, mx + mw, my + 34], fill=RED, width=8)
+    d.text((M + main_x, y1 + detail_dy), detail_text, font=REG(28), fill=MUTED)
+    stamp = make_stamp(stamp_text, stamp_color, 40).rotate(stamp_angle,
+                                                            expand=True,
+                                                            resample=Image.BICUBIC)
+    img.paste(stamp, (R - 40 - stamp.width, y1 + stamp_dy), stamp)
+
+
+def draw_header(d, M, R):
+    """Dark header bar: the agent speaking."""
+    d.rounded_rectangle([M, 36, R, 136], radius=24, fill=INK)
+    draw_robot(d, M + 52, 86, 34)
+    d.text((M + 108, 52), "YOUR AI AGENT", font=BOLD(40), fill=(255, 255, 255))
+    d.text((M + 108, 96), "just now  •  online", font=REG(28), fill=(156, 163, 175))
+    d.ellipse([R - 34, 66, R - 14, 86], fill=(74, 222, 128))
+
+
 def main():
     img = Image.new("RGB", (W, H), BG)
     d = ImageDraw.Draw(img)
@@ -115,51 +160,29 @@ def main():
     R = W - M  # right edge
 
     # ---- header bar: the agent speaking ----
-    d.rounded_rectangle([M, 36, R, 136], radius=24, fill=INK)
-    draw_robot(d, M + 52, 86, 34)
-    d.text((M + 108, 52), "YOUR AI AGENT", font=BOLD(40), fill=(255, 255, 255))
-    d.text((M + 108, 96), "just now  •  online", font=REG(28), fill=(156, 163, 175))
-    d.ellipse([R - 34, 66, R - 14, 86], fill=(74, 222, 128))
+    draw_header(d, M, R)
 
     # ---- headline ----
     d.text((M, 168), "I optimized your weekend.", font=BOLD(54), fill=INK)
 
     # ---- card 1: the wedding, cancelled ----
-    y1, y2 = 252, 544
-    d.rounded_rectangle([M, y1, R, y2], radius=28, fill=CARD)
-    d.rounded_rectangle([M, y1, M + 16, y2], radius=8, fill=RED)
-    d.text((M + 44, y1 + 26), "SATURDAY  •  2:00 PM", font=BOLD(30), fill=MUTED)
-    draw_ring(d, M + 78, y1 + 148, 26)
-    wx, wy = M + 122, y1 + 108
-    d.text((wx, wy), "YOUR WEDDING", font=BOLD(60), fill=INK)
-    ww = text_w(d, "YOUR WEDDING", BOLD(60))
-    d.line([wx, wy + 34, wx + ww, wy + 34], fill=RED, width=8)
-    d.text((M + 122, y1 + 196), "✓ 142 guests notified", font=REG(28), fill=MUTED)
-    stamp = make_stamp("CANCELLED", RED, 40).rotate(-8, expand=True,
-                                                     resample=Image.BICUBIC)
-    img.paste(stamp, (R - 40 - stamp.width, y1 + 168), stamp)
+    draw_verdict_card(d, M, R, 252, 544, RED, "SATURDAY  •  2:00 PM",
+                      lambda d, cx, cy: draw_ring(d, cx, cy, 26),
+                      "YOUR WEDDING", "✓ 142 guests notified",
+                      "CANCELLED", RED, -8, img, strike=True)
 
     # ---- card 2: the gym streak, protected ----
-    y1, y2 = 564, 824
-    d.rounded_rectangle([M, y1, R, y2], radius=28, fill=CARD)
-    d.rounded_rectangle([M, y1, M + 16, y2], radius=8, fill=GREEN)
-    d.text((M + 44, y1 + 24), "EVERY DAY  •  7:00 AM", font=BOLD(30), fill=MUTED)
-    draw_dumbbell(d, M + 78, y1 + 118, 16)
-    d.text((M + 140, y1 + 96), "GYM STREAK — DAY 47", font=BOLD(52), fill=INK)
-    d.text((M + 140, y1 + 176), "✓ Day 48 already secured", font=REG(28), fill=MUTED)
-    stamp2 = make_stamp("PROTECTED ✓", GREEN, 40).rotate(6, expand=True,
-                                                         resample=Image.BICUBIC)
-    img.paste(stamp2, (R - 40 - stamp2.width, y1 + 150), stamp2)
+    draw_verdict_card(d, M, R, 564, 824, GREEN, "EVERY DAY  •  7:00 AM",
+                      lambda d, cx, cy: draw_dumbbell(d, cx, cy, 16),
+                      "GYM STREAK — DAY 47", "✓ Day 48 already secured",
+                      "PROTECTED ✓", GREEN, 6, img,
+                      label_dy=24, icon_y=118, main_x=140, main_size=52,
+                      main_dy=96, detail_dy=176, stamp_dy=150)
 
     # ---- the agent's smug explanation ----
-    y1, y2 = 844, 972
-    d.rounded_rectangle([M, y1, R, y2], radius=24, fill=BLUE_BUBBLE)
-    lines = wrap_text(d, "It clashed with your gym streak, so I cancelled it. "
-                         "You're welcome.", REG(36), R - M - 64)
-    ly = y1 + (y2 - y1 - len(lines) * 46) // 2 + 4
-    for line in lines:
-        d.text((M + 32, ly), line, font=REG(36), fill=BLUE_INK)
-        ly += 46
+    draw_bubble(d, M, R, 844, 972,
+                "It clashed with your gym streak, so I cancelled it. "
+                "You're welcome.")
 
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     img.save(OUT, format="PNG", optimize=True)
